@@ -1,1 +1,109 @@
+/* General styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: lightgrey;
+    color: #333;
+}
 
+.container {
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+/* Headings */
+h1 {
+    font-size: 24px;
+    color: darkgreen;
+    margin-bottom: 20px;
+}
+
+h2 {
+    font-size: 20px;
+    color: black;
+    margin-bottom: 15px;
+}
+
+/* Paragraphs */
+p {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: #666;
+}
+
+/* Buttons */
+button {
+    background-color: forestgreen;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 10px;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: darkslategray;
+}
+
+/* Forms */
+form {
+    margin: 20px 0;
+}
+
+input[type="text"],
+input[type="tel"],
+input[type="hidden"] {
+    width: 90%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button[type="submit"] {
+    background-color: #28a745;
+}
+
+button[type="submit"]:hover {
+    background-color: #218838;
+}
+
+/* Voucher buttons container */
+.voucher-options {
+    margin: 20px 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.voucher-options button {
+    flex: 1 1 calc(100% - 20px); /* Full width for small screens */
+    max-width: 300px; /* Limit width for larger screens */
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+
+    button {
+        width: 100%;
+    }
+
+    input[type="text"],
+    input[type="tel"] {
+        width: 100%;
+    }
+}
