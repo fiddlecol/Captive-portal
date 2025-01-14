@@ -20,7 +20,6 @@
             <button onclick="buyVoucher('1000', 'Unlimited', '1 Month')">1000 Ksh - Unlimited for 1 Month</button>
         </div>
 
-        <!-- Phone Number Input -->
        <!-- Phone Number Input -->
 <div id="phone-input-section" style="display:none;">
     <h2>Enter Your Phone Number</h2>
@@ -51,45 +50,52 @@
     </div>
 
     <script>
-        // Show phone input section when a voucher is selected
-        function buyVoucher(amount, data, duration) {
-            document.getElementById('phone-input-section').style.display = 'block';
-            document.getElementById('voucherAmount').value = amount;
-            document.getElementById('voucherData').value = data;
-            document.getElementById('voucherDuration').value = duration;
-        }
+    // Show phone input section when a voucher is selected
+    function buyVoucher(amount, data, duration) {
+        document.getElementById('phone-input-section').style.display = 'block';
+        document.getElementById('voucherAmount').value = amount;
+        document.getElementById('voucherData').value = data;
+        document.getElementById('voucherDuration').value = duration;
+    }
 
-        // Submit phone number and voucher info to the backend
-        function submitPhoneNumber(event) {
-            event.preventDefault();
+    // Submit phone number and voucher info to the backend
+    function submitPhoneNumber(event) {
+        event.preventDefault();
 
-            const phoneNumber = document.getElementById('phoneNumber').value;
-            const voucherAmount = document.getElementById('voucherAmount').value;
-            const voucherData = document.getElementById('voucherData').value;
-            const voucherDuration = document.getElementById('voucherDuration').value;
+        const phoneNumber = document.getElementById('phoneNumber').value;
+        const voucherAmount = document.getElementById('voucherAmount').value;
+        const voucherData = document.getElementById('voucherData').value;
+        const voucherDuration = document.getElementById('voucherDuration').value;
 
-            fetch('/buy-voucher', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    phone_number: phoneNumber,
-                    amount: voucherAmount,
-                    data: voucherData,
-                    duration: voucherDuration,
-                }),
+        const submitButton = event.target.querySelector('button[type="submit"]');
+        submitButton.disabled = true; // Disable button to prevent multiple submissions
+
+        fetch('/buy-voucher', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                phone_number: phoneNumber,
+                amount: voucherAmount,
+                data: voucherData,
+                duration: voucherDuration,
+            }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message || 'Voucher purchased successfully!');
+                document.getElementById('phone-input-section').style.display = 'none';
             })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message || 'Voucher purchased successfully!');
-                    document.getElementById('phone-input-section').style.display = 'none';
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Failed to purchase voucher. Please try again.');
-                });
-        }
-    </script>
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to purchase voucher. Please try again.');
+            })
+            .finally(() => {
+                submitButton.disabled = false; // Re-enable button after submission
+            });
+    }
+</script>
+
 </body>
 </html>
