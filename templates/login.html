@@ -21,22 +21,21 @@
         </div>
 
        <!-- Phone Number Input -->
-<div id="phone-input-section" style="display:none;">
-    <h2>Enter Your Phone Number</h2>
-    <form id="phoneForm" onsubmit="submitPhoneNumber(event)">
-        <label for="phoneNumber">Phone Number:</label>
-        <input type="tel" id="phoneNumber" placeholder="Enter your phone number" required
-               pattern="(\+254)?[0-9]{9}"
-               value="+254"
-               maxlength="13"
-               minlength="13">
-        <input type="hidden" id="voucherAmount">
-        <input type="hidden" id="voucherData">
-        <input type="hidden" id="voucherDuration">
-        <button type="submit">Buy Voucher</button>
-    </form>
-</div>
-
+        <div id="phone-input-section" style="display:none;">
+            <h2>Enter Your Phone Number</h2>
+            <form id="phoneForm" onsubmit="submitPhoneNumber(event)">
+                <label for="phoneNumber">Phone Number:</label>
+                <input type="tel" id="phoneNumber" placeholder="Enter your phone number" required
+                       pattern="(\+254)?[0-9]{9}"
+                       value="+254"
+                       maxlength="13"
+                       minlength="13">
+                <input type="hidden" id="voucherAmount">
+                <input type="hidden" id="voucherData">
+                <input type="hidden" id="voucherDuration">
+                <button type="submit">Buy Voucher</button>
+            </form>
+        </div>
 
         <hr>
 
@@ -50,38 +49,38 @@
     </div>
 
     <script>
-    // Show phone input section when a voucher is selected
-    function buyVoucher(amount, data, duration) {
-        document.getElementById('phone-input-section').style.display = 'block';
-        document.getElementById('voucherAmount').value = amount;
-        document.getElementById('voucherData').value = data;
-        document.getElementById('voucherDuration').value = duration;
-    }
+        // Show phone input section when a voucher is selected
+        function buyVoucher(amount, data, duration) {
+            document.getElementById('phone-input-section').style.display = 'block';
+            document.getElementById('voucherAmount').value = amount;
+            document.getElementById('voucherData').value = data;
+            document.getElementById('voucherDuration').value = duration;
+        }
 
-    // Submit phone number and voucher info to the backend
-    function submitPhoneNumber(event) {
-        event.preventDefault();
+        // Submit phone number and voucher info to the backend
+        function submitPhoneNumber(event) {
+            event.preventDefault();
 
-        const phoneNumber = document.getElementById('phoneNumber').value;
-        const voucherAmount = document.getElementById('voucherAmount').value;
-        const voucherData = document.getElementById('voucherData').value;
-        const voucherDuration = document.getElementById('voucherDuration').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const voucherAmount = document.getElementById('voucherAmount').value;
+            const voucherData = document.getElementById('voucherData').value;
+            const voucherDuration = document.getElementById('voucherDuration').value;
 
-        const submitButton = event.target.querySelector('button[type="submit"]');
-        submitButton.disabled = true; // Disable button to prevent multiple submissions
+            const submitButton = event.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true; // Disable button to prevent multiple submissions
 
-        fetch('/buy-voucher', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                phone_number: phoneNumber,
-                amount: voucherAmount,
-                data: voucherData,
-                duration: voucherDuration,
-            }),
-        })
+            fetch('/buy-voucher', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    phone_number: phoneNumber,
+                    amount: voucherAmount,
+                    data: voucherData,
+                    duration: voucherDuration,
+                }),
+            })
             .then(response => response.json())
             .then(data => {
                 alert(data.message || 'Voucher purchased successfully!');
@@ -94,8 +93,25 @@
             .finally(() => {
                 submitButton.disabled = false; // Re-enable button after submission
             });
-    }
-</script>
+        }
+
+        // Automatically fetch and paste voucher code into the input field
+        window.onload = function() {
+            fetch('/get-voucher')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.voucher_code) {
+                        document.getElementById('voucher_code').value = data.voucher_code;
+                    } else {
+                        alert(data.error || "No vouchers available.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching voucher:', error);
+                    alert("Failed to fetch voucher. Please try again.");
+                });
+        };
+    </script>
 
 </body>
 </html>

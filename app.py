@@ -4,6 +4,7 @@ import os
 import requests
 import base64
 from datetime import datetime
+# from diffusers import DiffusionPipeline
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 import sqlite3
@@ -134,25 +135,29 @@ def initiate_stk_push(phone_number, amount):
 def login():
     if request.method == 'POST':
         # Automatically fetch an unused voucher
-        voucher_code = get_unused_voucher()
-
-        if not voucher_code:
-            return jsonify({"error": "No unused vouchers available."}), 400
-
-        # Mark the voucher as used
         conn = sqlite3.connect('vouchers.db')
         cursor = conn.cursor()
-        cursor.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (voucher_code,))
-        conn.commit()
-        conn.close()
+        cursor.execute("SELECT voucher_code FROM vouchers WHERE used = 0 LIMIT 1")
+        result = cursor.fetchone()
 
-        return jsonify({
-            "message": "Login successful! Enjoy your WiFi.",
-            "voucher_code": voucher_code
-        })
+        if result:
+            voucher_code = result[0]
+            # Mark the voucher as used
+            cursor.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (voucher_code,))
+            conn.commit()
+            conn.close()
 
-    # Render login form
+            return jsonify({
+                "message": "Login successful! Enjoy your WiFi.",
+                "voucher_code": voucher_code
+            })
+        else:
+            conn.close()
+            return jsonify({"error": "No unused vouchers available."}), 400
+
+    # Render the login page
     return render_template('login.html')
+
 
 # Route to process voucher purchase
 @app.route('/buy-voucher', methods=['POST'])
@@ -183,6 +188,17 @@ def buy_voucher():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# Route to get an unused voucher
+@app.route('/get-voucher')
+def get_voucher():
+    voucher_code = get_unused_voucher()
+    if voucher_code:
+        return jsonify({
+            "voucher_code": voucher_code
+        })
+    else:
+        return jsonify({"error": "No unused vouchers available."}), 400
 
 @app.route('/mpesa-callback', methods=['POST'])
 def mpesa_callback():
