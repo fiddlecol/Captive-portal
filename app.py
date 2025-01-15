@@ -6,12 +6,10 @@ import base64
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
+import sqlite3
 
 # Initialize Flask app
 app = Flask(__name__)
-
-# In-memory database for vouchers
-vouchers = {}
 
 # Load environment variables from .env file
 load_dotenv()
@@ -24,11 +22,29 @@ PASSKEY = os.getenv("PASSKEY")
 OAUTH_URL = os.getenv("OAUTH_URL")
 LIPA_NA_MPESA_URL = os.getenv("LIPA_NA_MPESA_URL")
 
+# SQLite Database setup
+DATABASE = 'vouchers.db'
+
+# Function to get a database connection
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row  # To access columns by name
+    return conn
+
+# Function to initialize the database
+def init_db():
+    with get_db() as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS vouchers (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            voucher_code TEXT UNIQUE,
+                            used BOOLEAN,
+                            data TEXT,
+                            duration TEXT)''')
+        conn.commit()
 
 # Function to generate unique voucher codes
 def generate_voucher():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-
 
 # Function to format phone number
 def format_phone_number(phone_number):
@@ -45,7 +61,6 @@ def format_phone_number(phone_number):
         raise ValueError("Phone number must start with '0', '+254', or '254'")
     return phone_number
 
-
 # Function to get access token
 def get_access_token():
     response = requests.get(OAUTH_URL, auth=(CONSUMER_KEY, CONSUMER_SECRET))
@@ -54,14 +69,12 @@ def get_access_token():
     else:
         raise Exception(f"Failed to get access token: {response.json()}")
 
-
 # Function to generate password for STK Push
 def generate_password():
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     password_str = f"{BUSINESS_SHORT_CODE}{PASSKEY}{timestamp}"
     password = base64.b64encode(password_str.encode()).decode()
     return password, timestamp
-
 
 # Function to initiate STK Push
 def initiate_stk_push(phone_number, amount):
@@ -106,25 +119,25 @@ def initiate_stk_push(phone_number, amount):
     except Exception as e:
         return {"error": str(e)}
 
-
 # Route for captive portal login
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         voucher_code = request.form.get("voucher_code")
         print("Received Voucher Code:", voucher_code)
-        print("Available Vouchers:", vouchers)
 
         # Check if voucher exists and is not used
-        if voucher_code in vouchers and not vouchers[voucher_code]["used"]:
-            vouchers[voucher_code]["used"] = True  # Mark voucher as used
-            return jsonify({"message": "Login successful! Enjoy your WiFi."})
-        else:
-            return jsonify({"error": "Invalid or already used voucher code."}), 400
+        with get_db() as conn:
+            voucher = conn.execute("SELECT * FROM vouchers WHERE voucher_code = ? AND used = 0", (voucher_code,)).fetchone()
+            if voucher:
+                conn.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (voucher_code,))
+                conn.commit()
+                return jsonify({"message": "Login successful! Enjoy your WiFi."})
+            else:
+                return jsonify({"error": "Invalid or already used voucher code."}), 400
 
     # Render login form
     return render_template('login.html')
-
 
 # Route to process voucher purchase
 @app.route('/buy-voucher', methods=['POST'])
@@ -142,9 +155,12 @@ def buy_voucher():
         if "error" in response:
             return jsonify({"error": response["error"]}), 400
 
-        # Generate voucher and store in the in-memory database
+        # Generate voucher and store in SQLite database
         voucher_code = generate_voucher()
-        vouchers[voucher_code] = {"used": False, "data": voucher_data, "duration": duration}
+        with get_db() as conn:
+            conn.execute("INSERT INTO vouchers (voucher_code, used, data, duration) VALUES (?, 0, ?, ?)",
+                         (voucher_code, voucher_data, duration))
+            conn.commit()
 
         return jsonify({
             "message": "Sent successfully. Enter PIN on your phone to complete payment.",
@@ -152,8 +168,7 @@ def buy_voucher():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-   
-   
+
 @app.route('/mpesa-callback', methods=['POST'])
 def mpesa_callback():
     try:
@@ -174,7 +189,10 @@ def mpesa_callback():
                 "data": "1 GB",  # Example data plan
                 "duration": "1 Hour",  # Example duration
             }
-            vouchers[reference_code] = voucher_data
+            with get_db() as conn:
+                conn.execute("INSERT INTO vouchers (voucher_code, used, data, duration) VALUES (?, 0, ?, ?)",
+                             (reference_code, voucher_data["data"], voucher_data["duration"]))
+                conn.commit()
 
             print(f"Voucher created: {reference_code}")
             return jsonify({"message": "Callback received and voucher created."})
@@ -185,7 +203,7 @@ def mpesa_callback():
         print("Error processing callback:", str(e))
         return jsonify({"error": str(e)}), 500
 
-
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
-
+    # Initialize the database
+    init_db()
+    app.run(debug=True, host="0.0.0.0", port=5000)
