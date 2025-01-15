@@ -61,6 +61,16 @@ def format_phone_number(phone_number):
         raise ValueError("Phone number must start with '0', '+254', or '254'")
     return phone_number
 
+# Get unused voucher
+def get_unused_voucher():
+    conn = sqlite3.connect('vouchers.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT voucher_code FROM vouchers WHERE used = 0 LIMIT 1")
+    voucher = cursor.fetchone()
+    conn.close()
+    return voucher[0] if voucher else None
+
+
 # Function to get access token
 def get_access_token():
     response = requests.get(OAUTH_URL, auth=(CONSUMER_KEY, CONSUMER_SECRET))
@@ -123,18 +133,23 @@ def initiate_stk_push(phone_number, amount):
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        voucher_code = request.form.get("voucher_code")
-        print("Received Voucher Code:", voucher_code)
+        # Automatically fetch an unused voucher
+        voucher_code = get_unused_voucher()
 
-        # Check if voucher exists and is not used
-        with get_db() as conn:
-            voucher = conn.execute("SELECT * FROM vouchers WHERE voucher_code = ? AND used = 0", (voucher_code,)).fetchone()
-            if voucher:
-                conn.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (voucher_code,))
-                conn.commit()
-                return jsonify({"message": "Login successful! Enjoy your WiFi."})
-            else:
-                return jsonify({"error": "Invalid or already used voucher code."}), 400
+        if not voucher_code:
+            return jsonify({"error": "No unused vouchers available."}), 400
+
+        # Mark the voucher as used
+        conn = sqlite3.connect('vouchers.db')
+        cursor = conn.cursor()
+        cursor.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (voucher_code,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "message": "Login successful! Enjoy your WiFi.",
+            "voucher_code": voucher_code
+        })
 
     # Render login form
     return render_template('login.html')
