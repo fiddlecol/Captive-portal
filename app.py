@@ -112,6 +112,8 @@ def initiate_stk_push(phone_number, amount):
 def login():
     if request.method == 'POST':
         voucher_code = request.form.get("voucher_code")
+        print("Received Voucher Code:", voucher_code)
+        print("Available Vouchers:", vouchers)
 
         # Check if voucher exists and is not used
         if voucher_code in vouchers and not vouchers[voucher_code]["used"]:
@@ -145,11 +147,43 @@ def buy_voucher():
         vouchers[voucher_code] = {"used": False, "data": voucher_data, "duration": duration}
 
         return jsonify({
-            "message": "STK Push sent successfully. Enter PIN on your phone to complete payment.",
+            "message": "Sent successfully. Enter PIN on your phone to complete payment.",
             "voucher_code": voucher_code,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+   
+   
+@app.route('/mpesa-callback', methods=['POST'])
+def mpesa_callback():
+    try:
+        # Parse the callback data
+        callback_data = request.get_json()
+        print("Callback Data:", callback_data)
+
+        # Extract the M-Pesa reference code
+        result_code = callback_data.get("Body", {}).get("stkCallback", {}).get("ResultCode")
+        if result_code == 0:  # Payment successful
+            reference_code = callback_data["Body"]["stkCallback"]["CallbackMetadata"]["Item"][1]["Value"]
+            amount = callback_data["Body"]["stkCallback"]["CallbackMetadata"]["Item"][0]["Value"]
+
+            # Create a new voucher using the reference code
+            voucher_data = {
+                "used": False,
+                "amount": amount,
+                "data": "1 GB",  # Example data plan
+                "duration": "1 Hour",  # Example duration
+            }
+            vouchers[reference_code] = voucher_data
+
+            print(f"Voucher created: {reference_code}")
+            return jsonify({"message": "Callback received and voucher created."})
+        else:
+            print("Payment failed or canceled.")
+            return jsonify({"error": "Payment failed or canceled."}), 400
+    except Exception as e:
+        print("Error processing callback:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
