@@ -39,7 +39,8 @@ def init_db():
                             voucher_code TEXT UNIQUE,
                             used BOOLEAN,
                             data TEXT,
-                            duration TEXT)''')
+                            duration TEXT,
+                            phone_number TEXT)''')
         conn.commit()
 
 # Function to generate unique voucher codes
