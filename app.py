@@ -4,7 +4,6 @@ import os
 import requests
 import base64
 from datetime import datetime
-# from diffusers import DiffusionPipeline
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 import sqlite3
@@ -64,13 +63,11 @@ def format_phone_number(phone_number):
 
 # Get unused voucher
 def get_unused_voucher():
-    conn = sqlite3.connect('vouchers.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT voucher_code FROM vouchers WHERE used = 0 LIMIT 1")
-    voucher = cursor.fetchone()
-    conn.close()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT voucher_code FROM vouchers WHERE used = 0 LIMIT 1")
+        voucher = cursor.fetchone()
     return voucher[0] if voucher else None
-
 
 # Function to get access token
 def get_access_token():
@@ -135,24 +132,24 @@ def initiate_stk_push(phone_number, amount):
 def login():
     if request.method == 'POST':
         # Automatically fetch an unused voucher
-        conn = sqlite3.connect('vouchers.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT voucher_code FROM vouchers WHERE used = 0 LIMIT 1")
-        result = cursor.fetchone()
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT voucher_code FROM vouchers WHERE used = 0 LIMIT 1")
+            result = cursor.fetchone()
 
         if result:
             voucher_code = result[0]
             # Mark the voucher as used
-            cursor.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (voucher_code,))
-            conn.commit()
-            conn.close()
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (voucher_code,))
+                conn.commit()
 
             return jsonify({
                 "message": "Login successful! Enjoy your WiFi.",
                 "voucher_code": voucher_code
             })
         else:
-            conn.close()
             return jsonify({"error": "No unused vouchers available."}), 400
 
     # Render the login page
@@ -175,12 +172,27 @@ def buy_voucher():
         if "error" in response:
             return jsonify({"error": response["error"]}), 400
 
-        # Generate voucher and store in SQLite database
-        voucher_code = generate_voucher()
+        # Start a transaction to ensure atomicity
         with get_db() as conn:
-            conn.execute("INSERT INTO vouchers (voucher_code, used, data, duration) VALUES (?, 0, ?, ?)",
-                         (voucher_code, voucher_data, duration))
-            conn.commit()
+            conn.isolation_level = None  # Disable autocommit to manage transactions manually
+            cursor = conn.cursor()
+
+            try:
+                # Begin the transaction
+                cursor.execute("BEGIN TRANSACTION")
+
+                # Generate voucher and store in SQLite database
+                voucher_code = generate_voucher()
+                cursor.execute("INSERT INTO vouchers (voucher_code, used, data, duration) VALUES (?, 0, ?, ?)",
+                               (voucher_code, voucher_data, duration))
+
+                # Commit the transaction
+                conn.commit()
+
+            except Exception as e:
+                # Rollback if anything goes wrong
+                conn.rollback()
+                return jsonify({"error": str(e)}), 400
 
         return jsonify({
             "message": "Sent successfully. Enter PIN on your phone to complete payment.",

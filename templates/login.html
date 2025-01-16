@@ -44,7 +44,7 @@
         <form action="/" method="POST" id="loginForm">
             <label for="voucher_code">Enter Voucher Code:</label>
             <input type="text" id="voucher_code" name="voucher_code" placeholder="Voucher Code" required>
-            <button type="submit">Login</button>
+            <button type="submit" id="loginButton" disabled>Login</button>
         </form>
     </div>
 
@@ -83,7 +83,13 @@
             })
             .then(response => response.json())
             .then(data => {
-                alert(data.message || 'Sent successfully. Enter PIN on your phone to complete payment.');
+                if (data.voucher_code) {
+                    alert('Voucher purchased successfully. Please enter the code to login.');
+                    document.getElementById('voucher_code').value = data.voucher_code;
+                    document.getElementById('loginButton').disabled = false; // Enable login button
+                } else {
+                    alert('Failed to purchase voucher. Please try again.');
+                }
                 document.getElementById('phone-input-section').style.display = 'none';
             })
             .catch(error => {
@@ -95,7 +101,7 @@
             });
         }
 
-        // Automatically fetch and paste voucher code into the input field
+        // Automatically fetch and paste voucher code into the input field (if empty)
         function fetchVoucherCode() {
             const voucherInput = document.getElementById('voucher_code');
             if (voucherInput.value.trim() === "") {
