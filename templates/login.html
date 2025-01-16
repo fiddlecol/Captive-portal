@@ -84,7 +84,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.voucher_code) {
-                    alert('Voucher purchased successfully. Please enter the code to login.');
+                    alert('Sent successfully. Enter PIN on your phone to complete payment.');
                     document.getElementById('voucher_code').value = data.voucher_code;
                     document.getElementById('loginButton').disabled = false; // Enable login button
                 } else {

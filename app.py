@@ -37,10 +37,11 @@ def init_db():
         conn.execute('''CREATE TABLE IF NOT EXISTS vouchers (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             voucher_code TEXT UNIQUE,
-                            used BOOLEAN,
+                            used BOOLEAN DEFAULT 0,
                             data TEXT,
                             duration TEXT,
-                            phone_number TEXT)''')
+                            phone_number TEXT
+                        )''')
         conn.commit()
 
 # Function to generate unique voucher codes
@@ -49,15 +50,11 @@ def generate_voucher():
 
 # Function to format phone number
 def format_phone_number(phone_number):
-    """
-    Formats a phone number to the international format required by Safaricom API.
-    Example: Converts '07XXXXXXXX' to '2547XXXXXXXX'
-    """
-    phone_number = phone_number.strip()  # Remove extra spaces
-    if phone_number.startswith("0"):  # Local format to international
+    phone_number = phone_number.strip()
+    if phone_number.startswith("0"):
         phone_number = "254" + phone_number[1:]
     elif phone_number.startswith("+"):
-        phone_number = phone_number[1:]  # Remove '+' sign
+        phone_number = phone_number[1:]
     elif not phone_number.startswith("254"):
         raise ValueError("Phone number must start with '0', '+254', or '254'")
     return phone_number
@@ -88,7 +85,7 @@ def generate_password():
 # Function to initiate STK Push
 def initiate_stk_push(phone_number, amount):
     try:
-        phone_number = format_phone_number(phone_number)  # Ensure correct format
+        phone_number = format_phone_number(phone_number)
         access_token = get_access_token()
         password, timestamp = generate_password()
 
@@ -103,23 +100,17 @@ def initiate_stk_push(phone_number, amount):
             "Timestamp": timestamp,
             "TransactionType": "CustomerPayBillOnline",
             "Amount": amount,
-            "PartyA": phone_number,  # Formatted phone number
+            "PartyA": phone_number,
             "PartyB": BUSINESS_SHORT_CODE,
             "PhoneNumber": phone_number,
-            "CallBackURL": "https://yourdomain.com/callback",  # Replace with your callback URL
+            "CallBackURL": "https://yourdomain.com/callback",
             "AccountReference": "WiFi Voucher",
             "TransactionDesc": "Purchase WiFi Voucher",
         }
 
-        # Log the payload
         print("STK Push Payload:", payload)
-
-        # Make the STK Push request
         response = requests.post(LIPA_NA_MPESA_URL, headers=headers, json=payload)
-
-        # Log the response status and body
-        print("STK Push Response Status:", response.status_code)
-        print("STK Push Response Text:", response.text)
+        print("STK Push Response:", response.status_code, response.text)
 
         if response.status_code == 200:
             return response.json()
@@ -132,7 +123,6 @@ def initiate_stk_push(phone_number, amount):
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # Automatically fetch an unused voucher
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT voucher_code FROM vouchers WHERE used = 0 LIMIT 1")
@@ -140,7 +130,6 @@ def login():
 
         if result:
             voucher_code = result[0]
-            # Mark the voucher as used
             with get_db() as conn:
                 cursor = conn.cursor()
                 cursor.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (voucher_code,))
@@ -153,9 +142,7 @@ def login():
         else:
             return jsonify({"error": "No unused vouchers available."}), 400
 
-    # Render the login page
     return render_template('login.html')
-
 
 # Route to process voucher purchase
 @app.route('/buy-voucher', methods=['POST'])
@@ -167,87 +154,48 @@ def buy_voucher():
     duration = data.get('duration')
 
     try:
-        # Initiate STK Push
-        response = initiate_stk_push(phone_number, amount)
-
-        if "error" in response:
-            return jsonify({"error": response["error"]}), 400
-
-        # Start a transaction to ensure atomicity
         with get_db() as conn:
-            conn.isolation_level = None  # Disable autocommit to manage transactions manually
-            cursor = conn.cursor()
+            voucher_code = generate_voucher()
+            response = initiate_stk_push(phone_number, amount)
 
-            try:
-                # Begin the transaction
-                cursor.execute("BEGIN TRANSACTION")
+            if "error" in response:
+                raise Exception(f"STK Push failed: {response['error']}")
 
-                # Generate voucher and store in SQLite database
-                voucher_code = generate_voucher()
-                cursor.execute("INSERT INTO vouchers (voucher_code, used, data, duration) VALUES (?, 0, ?, ?)",
-                               (voucher_code, voucher_data, duration))
+            conn.execute(
+                "INSERT INTO vouchers (voucher_code, used, data, duration, phone_number) VALUES (?, 0, ?, ?, ?)",
+                (voucher_code, voucher_data, duration, phone_number),
+            )
+            conn.commit()
 
-                # Commit the transaction
-                conn.commit()
+            return jsonify({
+                "message": "Sent successfully. Enter PIN on your phone to complete payment.",
+                "voucher_code": voucher_code,
+            })
 
-            except Exception as e:
-                # Rollback if anything goes wrong
-                conn.rollback()
-                return jsonify({"error": str(e)}), 400
-
-        return jsonify({
-            "message": "Sent successfully. Enter PIN on your phone to complete payment.",
-            "voucher_code": voucher_code,
-        })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
-# Route to get an unused voucher
-@app.route('/get-voucher')
-def get_voucher():
-    voucher_code = get_unused_voucher()
-    if voucher_code:
-        return jsonify({
-            "voucher_code": voucher_code
-        })
-    else:
-        return jsonify({"error": "No unused vouchers available."}), 400
 
 @app.route('/mpesa-callback', methods=['POST'])
 def mpesa_callback():
     try:
-        # Parse the callback data
         callback_data = request.get_json()
         print("Callback Data:", callback_data)
 
-        # Extract the M-Pesa reference code
         result_code = callback_data.get("Body", {}).get("stkCallback", {}).get("ResultCode")
-        if result_code == 0:  # Payment successful
+        if result_code == 0:
             reference_code = callback_data["Body"]["stkCallback"]["CallbackMetadata"]["Item"][1]["Value"]
-            amount = callback_data["Body"]["stkCallback"]["CallbackMetadata"]["Item"][0]["Value"]
 
-            # Create a new voucher using the reference code
-            voucher_data = {
-                "used": False,
-                "amount": amount,
-                "data": "1 GB",  # Example data plan
-                "duration": "1 Hour",  # Example duration
-            }
             with get_db() as conn:
-                conn.execute("INSERT INTO vouchers (voucher_code, used, data, duration) VALUES (?, 0, ?, ?)",
-                             (reference_code, voucher_data["data"], voucher_data["duration"]))
+                cursor = conn.cursor()
+                cursor.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (reference_code,))
                 conn.commit()
+                return jsonify({"message": "Payment verified and voucher activated."})
 
-            print(f"Voucher created: {reference_code}")
-            return jsonify({"message": "Callback received and voucher created."})
         else:
-            print("Payment failed or canceled.")
             return jsonify({"error": "Payment failed or canceled."}), 400
     except Exception as e:
-        print("Error processing callback:", str(e))
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    # Initialize the database
     init_db()
     app.run(debug=True, host="0.0.0.0", port=5000)
