@@ -185,11 +185,26 @@ def mpesa_callback():
         if result_code == 0:
             reference_code = callback_data["Body"]["stkCallback"]["CallbackMetadata"]["Item"][1]["Value"]
 
+            # Set the voucher code to the M-Pesa reference code
             with get_db() as conn:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE vouchers SET used = 1 WHERE voucher_code = ?", (reference_code,))
-                conn.commit()
-                return jsonify({"message": "Payment verified and voucher activated."})
+                cursor.execute("SELECT voucher_code FROM vouchers WHERE phone_number = ? AND used = 0 LIMIT 1", (reference_code,))
+                voucher = cursor.fetchone()
+
+            if voucher:
+                # Set the voucher code to the M-Pesa reference code
+                voucher_code = reference_code
+
+                # Update the voucher status to used and set the voucher code
+                with get_db() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE vouchers SET used = 1, voucher_code = ? WHERE phone_number = ?", (voucher_code, reference_code))
+                    conn.commit()
+
+                return jsonify({
+                    "message": "Payment verified and voucher activated.",
+                    "voucher_code": voucher_code
+                })
 
         else:
             return jsonify({"error": "Payment failed or canceled."}), 400
