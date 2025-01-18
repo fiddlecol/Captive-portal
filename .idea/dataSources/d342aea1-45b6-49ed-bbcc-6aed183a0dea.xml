@@ -499,7 +499,7 @@
     </routine>
     <schema id="191" parent="1" name="main">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2025-01-18.14:15:34</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2025-01-18.14:33:45</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="192" parent="16">
       <ArgumentDirection>R</ArgumentDirection>
@@ -1597,74 +1597,116 @@
       <System>1</System>
     </table>
     <table id="557" parent="191" name="transactions"/>
-    <column id="558" parent="555" name="type">
+    <table id="558" parent="191" name="transactions.db"/>
+    <table id="559" parent="191" name="vouchers"/>
+    <table id="560" parent="191" name="vouchers_new"/>
+    <column id="561" parent="555" name="type">
       <Position>1</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="559" parent="555" name="name">
+    <column id="562" parent="555" name="name">
       <Position>2</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="560" parent="555" name="tbl_name">
+    <column id="563" parent="555" name="tbl_name">
       <Position>3</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="561" parent="555" name="rootpage">
+    <column id="564" parent="555" name="rootpage">
       <Position>4</Position>
       <StoredType>INT|0s</StoredType>
     </column>
-    <column id="562" parent="555" name="sql">
+    <column id="565" parent="555" name="sql">
       <Position>5</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="563" parent="556" name="name">
+    <column id="566" parent="556" name="name">
       <Position>1</Position>
     </column>
-    <column id="564" parent="556" name="seq">
+    <column id="567" parent="556" name="seq">
       <Position>2</Position>
     </column>
-    <column id="565" parent="557" name="id">
+    <column id="568" parent="557" name="transaction_reference">
+      <Position>1</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="569" parent="557" name="is_used">
+      <Position>2</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="570" parent="558" name="transaction_reference">
+      <Position>1</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="571" parent="558" name="phone_number">
+      <Position>2</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="572" parent="558" name="amount">
+      <Position>3</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="573" parent="558" name="timestamp">
+      <Position>4</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="574" parent="559" name="voucher_code">
+      <Position>1</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="575" parent="559" name="used">
+      <Position>2</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="576" parent="559" name="mpesa_reference">
+      <Position>3</Position>
+      <StoredType>TEXT|0s</StoredType>
+    </column>
+    <column id="577" parent="559" name="phone_number">
+      <Position>4</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="578" parent="559" name="duration">
+      <Position>5</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="579" parent="559" name="data">
+      <Position>6</Position>
+      <StoredType>integer|0s</StoredType>
+    </column>
+    <column id="580" parent="560" name="id">
       <AutoIncrement>1</AutoIncrement>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="566" parent="557" name="transaction_reference">
-      <NotNull>1</NotNull>
+    <column id="581" parent="560" name="phone_number">
       <Position>2</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="567" parent="557" name="phone_number">
-      <NotNull>1</NotNull>
+    <column id="582" parent="560" name="amount">
       <Position>3</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="583" parent="560" name="data">
+      <Position>4</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="568" parent="557" name="amount">
-      <NotNull>1</NotNull>
-      <Position>4</Position>
-      <StoredType>REAL|0s</StoredType>
-    </column>
-    <column id="569" parent="557" name="timestamp">
-      <NotNull>1</NotNull>
+    <column id="584" parent="560" name="duration">
       <Position>5</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="570" parent="557" name="is_used">
-      <DefaultExpression>0</DefaultExpression>
+    <column id="585" parent="560" name="mpesa_reference">
       <Position>6</Position>
+      <StoredType>TEXT|0s</StoredType>
+    </column>
+    <column id="586" parent="560" name="used">
+      <DefaultExpression>0</DefaultExpression>
+      <Position>7</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <index id="571" parent="557" name="sqlite_autoindex_transactions_1">
-      <ColNames>transaction_reference</ColNames>
-      <NameSurrogate>1</NameSurrogate>
-      <Unique>1</Unique>
-    </index>
-    <key id="572" parent="557">
+    <key id="587" parent="560">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
-    </key>
-    <key id="573" parent="557">
-      <ColNames>transaction_reference</ColNames>
-      <UnderlyingIndexName>sqlite_autoindex_transactions_1</UnderlyingIndexName>
     </key>
   </database-model>
 </dataSource>
