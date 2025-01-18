@@ -177,13 +177,7 @@ def buy_voucher():
         return jsonify({"success": False, "message": "Failed to generate voucher"}), 400
 
 
-@app.route('/get-voucher', methods=['GET'])
-def get_voucher():
-    return jsonify({"success": False, "message": "Not implemented"}), 404
-
-
 if __name__ == '__main__':
     init_db()  # Ensure the database and table are initialized
     print(" * Database initialized and ready")
     app.run(host='0.0.0.0', port=5000)
-
