@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 from datetime import datetime
 import requests
@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # For session management
 
 MPESA_SHORTCODE = os.getenv("BUSINESS_SHORT_CODE")
 MPESA_PASSKEY = os.getenv("PASSKEY")
@@ -37,7 +38,6 @@ def init_db():
     )''')
     conn.commit()
     conn.close()
-    print(" * Database and table initialized successfully")
 
 
 def get_mpesa_token():
@@ -102,16 +102,36 @@ def validate_transaction():
     ).fetchone()
 
     if transaction:
+        # Store transaction reference in session for auto-login
+        session['transaction_reference'] = transaction_reference
         conn.execute(
             'UPDATE transactions SET is_used = 1 WHERE transaction_reference = ?',
             (transaction_reference,)
         )
         conn.commit()
         conn.close()
-        return jsonify({"success": True, "message": "Access granted"}), 200
+        return redirect(url_for('dashboard'))  # Redirect to dashboard on successful login
     else:
         conn.close()
         return jsonify({"success": False, "message": "Invalid or already used transaction reference"}), 400
+
+
+@app.route('/dashboard')
+def dashboard():
+    # Check if the user is logged in via the session
+    if 'transaction_reference' not in session:
+        return redirect(url_for('home'))  # Redirect to login if not logged in
+
+    transaction_reference = session['transaction_reference']
+    conn = get_db_connection()
+    transaction = conn.execute(
+        'SELECT * FROM transactions WHERE transaction_reference = ?',
+        (transaction_reference,)
+    ).fetchone()
+
+    conn.close()
+
+    return render_template('dashboard.html', transaction=transaction)
 
 
 @app.route('/buy-voucher', methods=['POST'])
@@ -164,4 +184,6 @@ def get_voucher():
 
 if __name__ == '__main__':
     init_db()  # Ensure the database and table are initialized
+    print(" * Database initialized and ready")
     app.run(host='0.0.0.0', port=5000)
+
