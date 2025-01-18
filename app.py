@@ -18,10 +18,12 @@ CALLBACK_URL = os.getenv("CALLBACK_URL")
 OAUTH_URL = os.getenv("OAUTH_URL")
 LIPA_NA_MPESA_URL = os.getenv("LIPA_NA_MPESA_URL")
 
+
 def get_db_connection():
-    conn = sqlite3.connect('transactions.db')
-    conn.row_factory = sqlite3.Row
+    conn = sqlite3.connect('transactions.db')  # Connect to SQLite database
+    conn.row_factory = sqlite3.Row  # Enable row access by column name
     return conn
+
 
 def init_db():
     conn = get_db_connection()
@@ -35,12 +37,15 @@ def init_db():
     )''')
     conn.commit()
     conn.close()
+    print(" * Database and table initialized successfully")
+
 
 def get_mpesa_token():
     auth = (MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET)
     response = requests.get(OAUTH_URL, auth=auth)
     response_data = response.json()
     return response_data.get("access_token")
+
 
 def initiate_stk_push(phone_number, amount, transaction_reference):
     try:
@@ -76,9 +81,11 @@ def initiate_stk_push(phone_number, amount, transaction_reference):
     except requests.exceptions.JSONDecodeError:
         return {"error": "Invalid response from M-Pesa API"}
 
+
 @app.route('/')
 def home():
     return render_template('login.html')
+
 
 @app.route('/validate', methods=['POST'])
 def validate_transaction():
@@ -106,6 +113,7 @@ def validate_transaction():
         conn.close()
         return jsonify({"success": False, "message": "Invalid or already used transaction reference"}), 400
 
+
 @app.route('/buy-voucher', methods=['POST'])
 def buy_voucher():
     data = request.json
@@ -129,6 +137,7 @@ def buy_voucher():
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     conn = get_db_connection()
     try:
+        # Insert transaction into the database
         conn.execute(
             'INSERT INTO transactions (transaction_reference, phone_number, amount, timestamp) VALUES (?, ?, ?, ?)',
             (transaction_reference, phone_number, amount, timestamp)
@@ -139,17 +148,20 @@ def buy_voucher():
         # Initiate STK Push
         stk_response = initiate_stk_push(phone_number, amount, transaction_reference)
         if "error" in stk_response:
-            return jsonify({"success": False, "message": stk_response.get("errorMessage", "Failed to initiate STK Push")}), 400
+            return jsonify(
+                {"success": False, "message": stk_response.get("errorMessage", "Failed to initiate STK Push")}), 400
 
         return jsonify({"success": True, "voucher_code": transaction_reference}), 201
     except sqlite3.IntegrityError:
         conn.close()
         return jsonify({"success": False, "message": "Failed to generate voucher"}), 400
 
+
 @app.route('/get-voucher', methods=['GET'])
 def get_voucher():
     return jsonify({"success": False, "message": "Not implemented"}), 404
 
+
 if __name__ == '__main__':
-    init_db()
+    init_db()  # Ensure the database and table are initialized
     app.run(host='0.0.0.0', port=5000)
