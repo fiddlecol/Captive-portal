@@ -20,7 +20,7 @@
             <button onclick="buyVoucher('1000', 'Unlimited', '1 Month')">1000 Ksh - Unlimited for 1 Month</button>
         </div>
 
-       <!-- Phone Number Input -->
+        <!-- Phone Number Input -->
         <div id="phone-input-section" style="display:none;">
             <h2>Enter Your Phone Number</h2>
             <form id="phoneForm" onsubmit="submitPhoneNumber(event)">
@@ -69,6 +69,9 @@
             const submitButton = event.target.querySelector('button[type="submit"]');
             submitButton.disabled = true; // Disable button to prevent multiple submissions
 
+            // Show a loading spinner or message to the user
+            alert('Please wait while we process your request.');
+
             fetch('/buy-voucher', {
                 method: 'POST',
                 headers: {
@@ -84,13 +87,14 @@
             .then(response => response.json())
             .then(data => {
                 if (data.voucher_code) {
-                    alert('Sent successfully. Enter PIN on your phone to complete payment.');
+                    alert('Voucher sent successfully. Enter PIN on your phone to complete payment.');
                     document.getElementById('voucher_code').value = data.voucher_code;
                     document.getElementById('loginButton').disabled = false; // Enable login button
                 } else {
                     alert('Failed to purchase voucher. Please try again.');
                 }
                 document.getElementById('phone-input-section').style.display = 'none';
+                document.getElementById('phoneForm').reset(); // Clear the form
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -111,6 +115,8 @@
                         if (data.voucher_code) {
                             voucherInput.value = data.voucher_code;
                             document.getElementById('loginForm').submit(); // Auto-submit form
+                        } else if (data.mpesa_reference) {
+                            alert(`Payment confirmed! M-Pesa Reference: ${data.mpesa_reference}`);
                         }
                     })
                     .catch(error => {
