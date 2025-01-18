@@ -52,7 +52,7 @@
         {% if transaction_reference %}
         <div class="transaction-info">
             <p><strong>Transaction Reference:</strong> {{ transaction_reference }}</p>
-            <p>Login Successfully!. You can now access our services.</p>
+            <p>Login Successfully! You can now access our services.</p>
         </div>
         {% else %}
         <div class="transaction-info">
@@ -60,7 +60,7 @@
         </div>
         {% endif %}
 
-        <a href="/" class="btn">Log Out</a>
+        <a href="{{ url_for('logout') }}" class="btn">Log Out</a>
     </div>
 
 </body>
