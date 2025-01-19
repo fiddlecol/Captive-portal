@@ -5,6 +5,7 @@ import requests
 import os
 import base64
 from dotenv import load_dotenv
+# from fsspec import transaction
 
 load_dotenv()
 
@@ -82,24 +83,28 @@ def initiate_stk_push(phone_number, amount, transaction_reference):
         return {"error": "Invalid response from M-Pesa API"}
 
 
-@app.route('/')
-def home():
+@app.route('/login', methods=['GET', 'POST'])
+def login():
     return render_template('login.html')
 
 
 @app.route('/validate', methods=['POST'])
 def validate_transaction():
     data = request.json
-    transaction_reference = data.get('transaction_reference')
+    transaction_reference = data.get('transaction_reference','').strip()
 
     if not transaction_reference:
         return jsonify({"success": False, "message": "Transaction reference is required"}), 400
 
     conn = get_db_connection()
+    print (f"Querying for transaction_reference: {transaction_reference}")
+
     transaction = conn.execute(
         'SELECT * FROM transactions WHERE transaction_reference = ? AND is_used = 0',
         (transaction_reference,)
     ).fetchone()
+
+    print(f"Transaction found: {transaction}")
 
     if transaction:
         # Store transaction reference in session for auto-login
@@ -110,17 +115,17 @@ def validate_transaction():
         )
         conn.commit()
         conn.close()
-        return redirect(url_for('dashboard'))  # Redirect to dashboard on successful login
+        return jsonify({"success":True}), 200  # Redirect to dashboard on successful login
     else:
         conn.close()
         return jsonify({"success": False, "message": "Invalid or already used transaction reference"}), 400
 
 
-@app.route('/dashboard')
+@app.route('/dashboard', methods=['GET'])
 def dashboard():
     # Check if the user is logged in via the session
     if 'transaction_reference' not in session:
-        return redirect(url_for('home'))  # Redirect to login if not logged in
+        return redirect(url_for('login'))  # Redirect to login if not logged in
 
     transaction_reference = session['transaction_reference']
     conn = get_db_connection()
@@ -131,7 +136,7 @@ def dashboard():
 
     conn.close()
 
-    return render_template('/templates/dashboard.html', transaction_reference=transaction_reference)
+    return render_template('dashboard.html')
 
 
 @app.route('/buy-voucher', methods=['POST'])
@@ -181,7 +186,7 @@ def buy_voucher():
 def logout():
     # Clear the session to log out the user
     session.pop('transaction_reference', None)
-    return redirect(url_for('home'))  # Redirect to login page after logout
+    return redirect(url_for('login'))  # Redirect to login page after logout
 
 
 if __name__ == '__main__':
