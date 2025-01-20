@@ -16,6 +16,31 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
 }
+.dropdown {
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+}
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: darkolivegreen;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    z-index: 1;
+    font-style: italic;
+    }
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+.dropdown-content a {
+    color: darkred;
+    text-decoration: none;
+}
+.dropdown-content a:hover {
+    text-decoration: underline;
+}
 
 /* Headings */
 h1 {
@@ -82,8 +107,8 @@ button[type="submit"]:hover {
 .voucher-options {
     margin: 20px 0;
     display: flex;
-    flex-wrap: wrap;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 10px;
 }
 
@@ -106,4 +131,13 @@ button[type="submit"]:hover {
     input[type="tel"] {
         width: 100%;
     }
+}
+
+footer {
+    text-align: center;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
 }

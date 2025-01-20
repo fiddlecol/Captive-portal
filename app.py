@@ -5,7 +5,6 @@ import requests
 import os
 import base64
 from dotenv import load_dotenv
-# from fsspec import transaction
 
 load_dotenv()
 
@@ -191,5 +190,4 @@ def logout():
 
 if __name__ == '__main__':
     init_db()  # Ensure the database and table are initialized
-    print(" * Database initialized and ready")
     app.run(host='0.0.0.0', port=5000)
